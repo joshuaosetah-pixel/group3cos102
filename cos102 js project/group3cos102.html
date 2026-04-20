@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal Pro</title>
+    <style>
+        /* --- CSS STYLING --- */
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .portal-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1, h2 { color: #1a73e8; text-align: center; margin-bottom: 20px; }
+
+        /* Dashboard Stats */
+        .dash-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: #e8f0fe;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box h3 { margin: 0; font-size: 14px; color: #555; }
+        .stat-box p { margin: 5px 0 0; font-size: 24px; font-weight: bold; color: #1a73e8; }
+
+        input, select {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 12px;
+            background-color: #1a73e8;
+            color: rgb(248, 248, 248);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #1557b0; }
+
+        nav {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        nav button { background-color: #5f6368; font-size: 12px; }
+        nav button.active { background-color: #1a73e8; }
+
+        /* CGPA Row Styling */
+        .grade-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 40px;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .remove-btn {
+            background: #d93025;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            height: 35px;
+        }
+
+        .hidden { display: none; }
+        #login-error { color: #d93025; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="portal-card">
+        
+        <!-- 1. LOGIN SECTION -->
+        <div id="login-section">
+            <h1>Student Login</h1>
+            <input type="text" id="username" placeholder="Student ID (student)">
+            <input type="password" id="password" placeholder="Password (1234)">
+            <button style="width: 100%;" onclick="handleLogin()">Sign In</button>
+            <p id="login-error"></p>
+        </div>
+
+        <!-- 2. PORTAL CONTENT -->
+        <div id="portal-content" class="hidden">
+            <nav>
+                <button id="btn-dash" onclick="showPage('dash-page')">Dashboard</button>
+                <button id="btn-reg" onclick="showPage('course-page')">Registration</button>
+                <button id="btn-cgpa" onclick="showPage('cgpa-page')">CGPA Calc</button>
+            </nav>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
+
+            <!-- PAGE: DASHBOARD -->
+            <div id="dash-page">
+                <h2>Student Dashboard</h2>
+                <div class="dash-container">
+                    <div class="stat-box">
+                        <h3>Overall CGPA</h3>
+                        <p id="dash-cgpa">0.00</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Registered Courses</h3>
+                        <p id="dash-course-count">0</p>
+                    </div>
+                </div>
+                <button style="width: 100%; background:#5f6368;" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- PAGE: COURSE REGISTRATION -->
+            <div id="course-page" class="hidden">
+                <h2>Register Semester Courses</h2>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="c-name" placeholder="Course Code" style="flex: 2;">
+                    <input type="number" id="c-units" placeholder="Units" style="flex: 1;">
+                </div>
+                <button style="width: 100%;" onclick="registerCourse()">Add to Official List</button>
+                <ul id="course-display-list" style="padding: 0; margin-top: 20px;"></ul>
+            </div>
+
+            <!-- PAGE: CGPA CALCULATOR -->
+            <div id="cgpa-page" class="hidden">
+                <h2>Manual CGPA Calculator</h2>
+                <p style="font-size: 12px; color: #666; text-align: center;">Add courses and grades manually below.</p>
+                
+                <div id="calculator-rows">
+                    <!-- Dynamic rows will appear here -->
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button onclick="addRow()" style="flex: 1; background: #34a853;">+ Add Course</button>
+                    <button onclick="calculateResult()" style="flex: 1;">Calculate GPA</button>
+                </div>
+                <h2 id="final-cgpa" style="color: #1a73e8; margin-top: 20px;">GPA: 0.00</h2>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Data Store
+        let courseCount = 0;
+
+        // 1. Navigation
+        function showPage(pageId) {
+            const pages = ['dash-page', 'course-page', 'cgpa-page'];
+            pages.forEach(p => document.getElementById(p).classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+            
+            // UI Button Active State
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+            if(pageId === 'dash-page') document.getElementById('btn-dash').classList.add('active');
+            if(pageId === 'course-page') document.getElementById('btn-reg').classList.add('active');
+            if(pageId === 'cgpa-page') document.getElementById('btn-cgpa').classList.add('active');
+        }
+
+        // 2. Auth
+        function handleLogin() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if (u === "student" && p === "1234") {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('portal-content').classList.remove('hidden');
+                showPage('dash-page');
+            } else {
+                document.getElementById('login-error').innerText = "Try: student / 1234";
+            }
+        }
+
+        function logout() { window.location.reload(); }
+
+        // 3. Course Registration
+        function registerCourse() {
+            const name = document.getElementById('c-name').value;
+            const units = document.getElementById('c-units').value;
+            if (!name || !units) return alert("Fill all fields");
+
+            const list = document.getElementById('course-display-list');
+            const li = document.createElement('li');
+            li.className = 'course-item';
+            li.innerHTML = `<strong>${name}</strong> — ${units} Units`;
+            list.appendChild(li);
+
+            courseCount++;
+            document.getElementById('dash-course-count').innerText = courseCount;
+            document.getElementById('c-name').value = "";
+            document.getElementById('c-units').value = "";
+        }
+
+        // 4. CGPA Calculator (Manual Entry)
+        function addRow() {
+            const container = document.getElementById('calculator-rows');
+            const div = document.createElement('div');
+            div.className = 'grade-row';
+            div.innerHTML = `
+                <input type="text" class="calc-name" placeholder="Course Name">
+                <input type="number" class="calc-unit" placeholder="Units">
+                <select class="calc-grade">
+                    <option value="5">A (5)</option>
+                    <option value="4">B (4)</option>
+                    <option value="3">C (3)</option>
+                    <option value="2">D (2)</option>
+                    <option value="0">F (0)</option>
+                </select>
+                <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function calculateResult() {
+            const units = document.querySelectorAll('.calc-unit');
+            const grades = document.querySelectorAll('.calc-grade');
+            
+            let totalPoints = 0;
+            let totalUnits = 0;
+
+            for (let i = 0; i < units.length; i++) {
+                const u = parseFloat(units[i].value) || 0;
+                const g = parseFloat(grades[i].value);
+                totalPoints += (u * g);
+                totalUnits += u;
+            }
+
+            if (totalUnits > 0) {
+                const result = (totalPoints / totalUnits).toFixed(2);
+                document.getElementById('final-cgpa').innerText = `GPA: ${result}`;
+                document.getElementById('dash-cgpa').innerText = result; // Sync to dashboard
+            } else {
+                alert("Please add courses and enter units.");
+            }
+        }
+
+        // Initialize with one row
+        window.onload = addRow;
+    </script>
+</body>
+</html>
